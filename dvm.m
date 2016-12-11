@@ -33,8 +33,15 @@ elseif (dist == 'b')
     k = 1:N;
     x = 1/2 * (1 - cos((k-1) / M * pi)); % full cosine
 elseif (dist == 'c')
-%     disp('Coming real soon')
-%     d_z = 
+    % Integral of the second derivative
+    dz = linspace(2 * f/p,-2 * f/(1 - p),N);
+    x = zeros(1,N);
+    
+    reg1_opt = (dz >= 0);
+    x(reg1_opt) = p * (1 - p * dz(reg1_opt) / (2*f));
+    
+    reg2_opt = (dz < 0);
+    x(reg2_opt) = p - (p - 1)^2 / (2*f) * dz(reg2_opt);
 else
     error('Invalid type of distribution'); % make sure x [0:1]
 end
