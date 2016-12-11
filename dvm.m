@@ -68,13 +68,14 @@ function [Cl,Cm_LE,Cm_AC] = dvm(airfoil,alpha,M,dist,flap,x_h,eta)
         end
         
         if (nargin == 0)
-            x_h = input('Flap hinge location (in tenths of chord): ') / 10;
+            x_h = input('Flap hinge location (in tenths of chord): ');
             eta = input('Flap deflection angle (º): ');
-        else
+        elseif (nargin < 7)
             error('Not enough input arguments for flap analysis');
         end
         
         % Hinge location
+        x_h = x_h / 10;
         if (x_h > 10)
             error('Invalid hinge position');
         end
@@ -140,7 +141,7 @@ function [Cl,Cm_LE,Cm_AC] = dvm(airfoil,alpha,M,dist,flap,x_h,eta)
     % Circulation
     gamma = linsolve(A,RHS');
 
-    % Results
+    % Coefficients
     Cl = 2 * sum(gamma);
     Cm_LE = -2 * sum(gamma' .* VP(1,:) * cos(alpha));
     Cm_AC = -2 * sum(gamma' .* (VP(1,:) - 1/4) * cos(alpha));
@@ -196,7 +197,7 @@ function [Cl,Cm_LE,Cm_AC] = dvm(airfoil,alpha,M,dist,flap,x_h,eta)
         % Circulation
         gamma_flap = linsolve(A_flap,RHS_flap');
 
-        % Results by superposition
+        % Coefficients by superposition
         Cl = Cl + 2 * sum(gamma_flap);
         Cm_LE = Cm_LE - 2 * sum(gamma_flap' .* VP_flap(1,:));
         Cm_AC = Cm_AC - 2 * sum(gamma_flap' .* (VP_flap(1,:) - 1/4));
