@@ -97,48 +97,52 @@ function [Cl,Cm_LE,Cm_AC] = dvm(airfoil,alpha,M,dist,flap,x_h,eta)
     else
         z(:) = 0; % flat plate
     end
+    
+    % Assemble system of equations
+    function [v,n,VP] = assemble(x,z)
+        % i and i+1
+        x1 = x(1:M);
+        x2 = x(2:N);
+        z1 = z(1:M);
+        z2 = z(2:N);
 
-    % i and i+1
-    x1 = x(1:M);
-    x2 = x(2:N);
-    z1 = z(1:M);
-    z2 = z(2:N);
+        % Deltas
+        delta_x = x2 - x1;
+        delta_z = z2 - z1;
 
-    % Deltas
-    delta_x = x2 - x1;
-    delta_z = z2 - z1;
+        % Panel chords (length)
+        c = sqrt(delta_x.^2 + delta_z.^2);
 
-    % Panel chords (length)
-    c = sqrt(delta_x.^2 + delta_z.^2);
+        % Normal vectors
+        n = zeros(2,M);
+        n(1,:) = -delta_z ./ c; % x's
+        n(2,:) = delta_x ./ c; % z's
 
-    % Normal vectors
-    n = zeros(2,M);
-    n(1,:) = -delta_z ./ c; % x's
-    n(2,:) = delta_x ./ c; % z's
+        % Vortex points (aerodynamic centers)
+        VP = zeros(2,M);
+        VP(1,:) =  x1 + delta_x * 1/4;
+        VP(2,:) =  z1 + delta_z * 1/4;
 
-    % Vortex points (aerodynamic centers)
-    VP = zeros(2,M);
-    VP(1,:) =  x1 + delta_x * 1/4;
-    VP(2,:) =  z1 + delta_z * 1/4;
+        % Control points
+        CP = zeros(2,M);
+        CP(1,:) =  x1 + delta_x * 3/4;
+        CP(2,:) =  z1 + delta_z * 3/4;
 
-    % Control points
-    CP = zeros(2,M);
-    CP(1,:) =  x1 + delta_x * 3/4;
-    CP(2,:) =  z1 + delta_z * 3/4;
+        % Induced velocity at control point (i) due to vortex (j)
+        in = combvec(1:M,1:M); % i's and j's
 
-    % Induced velocity at control point (i) due to vortex (j)
-    in = combvec(1:M,1:M); % i's and j's
+        % Airfoil with angle of attack
+        r_sq = (CP(1,in(2,:)) - VP(1,in(1,:))).^2 + (CP(2,in(2,:)) - VP(2,in(1,:))).^2;
+        v(1,:) = 1/(2*pi) * (CP(2,in(2,:)) - VP(2,in(1,:))) ./ r_sq;
+        v(2,:) = -1/(2*pi) * (CP(1,in(2,:)) - VP(1,in(1,:))) ./ r_sq;
+    end
 
-    % Airfoil with angle of attack
-    r_sq = (CP(1,in(2,:)) - VP(1,in(1,:))).^2 + (CP(2,in(2,:)) - VP(2,in(1,:))).^2;
-    v(1,:) = 1/(2*pi) * (CP(2,in(2,:)) - VP(2,in(1,:))) ./ r_sq;
-    v(2,:) = -1/(2*pi) * (CP(1,in(2,:)) - VP(1,in(1,:))) ./ r_sq;
-
-    % System of equations
+    % Matrices
+    [v,n,VP] = assemble(x,z);
     A = reshape(sum(v .* n(:,in(2,:))),[M M])';
     RHS = -[cos(alpha) sin(alpha)] * n;
 
-    % Circulation
+    % Circulation (solve the system of equations)
     gamma = linsolve(A,RHS');
 
     % Coefficients
@@ -157,44 +161,12 @@ function [Cl,Cm_LE,Cm_AC] = dvm(airfoil,alpha,M,dist,flap,x_h,eta)
         reg_flap = (x_flap >= x_h);
         z_flap(reg_flap) = -tan(eta) * (x_flap(reg_flap) - x_h);
 
-        % i and i+1
-        x1_flap = x_flap(1:M);
-        x2_flap = x_flap(2:N);
-        z1_flap = z_flap(1:M);
-        z2_flap = z_flap(2:N);
-
-        % Deltas
-        delta_x_flap = x2_flap - x1_flap;
-        delta_z_flap = z2_flap - z1_flap;
-
-        % Panel chords (length)
-        c_flap = sqrt(delta_x_flap.^2 + delta_z_flap.^2);
-
-        % Normal vectors
-        n_flap = zeros(2,M);
-        n_flap(1,:) = -delta_z_flap ./ c_flap; % x's
-        n_flap(2,:) = delta_x_flap ./ c_flap; % z's
-
-        % Vortex points (aerodynamic centers)
-        VP_flap = zeros(2,M);
-        VP_flap(1,:) =  x1_flap + delta_x_flap * 1/4;
-        VP_flap(2,:) =  z1_flap + delta_z_flap * 1/4;
-
-        % Control points
-        CP_flap = zeros(2,M);
-        CP_flap(1,:) =  x1_flap + delta_x_flap * 3/4;
-        CP_flap(2,:) =  z1_flap + delta_z_flap * 3/4;
-
-        % Flap (flat plates) without angle of attack
-        r_sq_flap = (CP_flap(1,in(2,:)) - VP_flap(1,in(1,:))).^2 + (CP_flap(2,in(2,:)) - VP_flap(2,in(1,:))).^2;
-        v_flap(1,:) = 1/(2*pi) * (CP_flap(2,in(2,:)) - VP_flap(2,in(1,:))) ./ r_sq_flap;
-        v_flap(2,:) = -1/(2*pi) * (CP_flap(1,in(2,:)) - VP_flap(1,in(1,:))) ./ r_sq_flap;
-
-        % System of equations
+        % Matrices
+        [v_flap,n_flap,VP_flap] = assemble(x_flap,z_flap);
         A_flap = reshape(sum(v_flap .* n_flap(:,in(2,:))),[M M])';
         RHS_flap = -n_flap(1,:);
 
-        % Circulation
+        % Circulation (solve the system of equations)
         gamma_flap = linsolve(A_flap,RHS_flap');
 
         % Coefficients by superposition
