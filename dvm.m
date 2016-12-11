@@ -98,6 +98,12 @@ function [Cl,Cm_LE,Cm_AC] = dvm(airfoil,alpha,M,dist,flap,x_h,eta)
         z(:) = 0; % flat plate
     end
     
+    % Induced velocity at control point (i) due to vortex (j)
+    ij = ndgrid(1:M,1:M); % i's and j's
+    in = zeros(2,M*M);
+    in(1,:) = reshape(ij,[1 M*M]);
+    in(2,:) = reshape(ij',[1 M*M]);
+    
     % Assemble system of equations
     function [v,n,VP] = assemble(x,z)
         % i and i+1
@@ -127,9 +133,6 @@ function [Cl,Cm_LE,Cm_AC] = dvm(airfoil,alpha,M,dist,flap,x_h,eta)
         CP = zeros(2,M);
         CP(1,:) =  x1 + delta_x * 3/4;
         CP(2,:) =  z1 + delta_z * 3/4;
-
-        % Induced velocity at control point (i) due to vortex (j)
-        in = combvec(1:M,1:M); % i's and j's
 
         % Airfoil with angle of attack
         r_sq = (CP(1,in(2,:)) - VP(1,in(1,:))).^2 + (CP(2,in(2,:)) - VP(2,in(1,:))).^2;
