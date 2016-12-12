@@ -46,15 +46,19 @@ function [Cl,Cm_LE,Cm_AC] = dvm(airfoil,alpha,M,dist,flap,x_h,eta)
         k = 1:N;
         x = 1/2 * (1 - cos((k-1) / M * pi)); % full cosine
     elseif (dist == 'c')
-        % Integral of the second derivative
-        dz = linspace(2 * f/p,-2 * f/(1 - p),N);
-        x = zeros(1,N);
+        if (f > 0)
+            % Integral of the second derivative
+            dz = linspace(2 * f/p,-2 * f/(1 - p),N);
+            x = zeros(1,N);
 
-        reg1_opt = (dz >= 0);
-        x(reg1_opt) = p * (1 - p * dz(reg1_opt) / (2*f));
+            reg1_opt = (dz >= 0);
+            x(reg1_opt) = p * (1 - p * dz(reg1_opt) / (2*f));
 
-        reg2_opt = (dz < 0);
-        x(reg2_opt) = p - (p - 1)^2 / (2*f) * dz(reg2_opt);
+            reg2_opt = (dz < 0);
+            x(reg2_opt) = p - (p - 1)^2 / (2*f) * dz(reg2_opt);
+        else
+            x = linspace(0,1,N); % uniform flat plate
+        end
     else
         error('Invalid type of distribution');
     end
@@ -99,8 +103,8 @@ function [Cl,Cm_LE,Cm_AC] = dvm(airfoil,alpha,M,dist,flap,x_h,eta)
     end
     
     % Induced velocity at control point (i) due to vortex (j)
-    ij = ndgrid(1:M,1:M); % i's and j's
-    in = zeros(2,M*M);
+    ij = ndgrid(1:M,1:M); % combvec equivalent
+    in = zeros(2,M*M); % i's and j's
     in(1,:) = reshape(ij,[1 M*M]);
     in(2,:) = reshape(ij',[1 M*M]);
     
