@@ -1,8 +1,6 @@
-function [Cl,Cm_LE,Cm_AC] = dvm(airfoil,alpha,M,dist,flap,x_h,eta)
-    % clear variables;
-    % clc;
-    
+function [Cl,Cm] = dvm(airfoil,alpha,M,dist,flap,x_h,eta)
     if (nargin == 0)
+        clc;
         airfoil = input('4-digit NACA: ','s');
         alpha = input('Angle of attack (º): ');
         M = input('Number of panels: ');
@@ -18,13 +16,19 @@ function [Cl,Cm_LE,Cm_AC] = dvm(airfoil,alpha,M,dist,flap,x_h,eta)
         error('Invalid NACA airfoil');
     end
 
-    % Airfoil variables
+    % Airfoil camber
     f = str2double(airfoil(1)) / 100; % max camber 
     p = str2double(airfoil(2)) / 10; % max camber position
-
+    
+    % Airfoil thickness
+    t = str2double(airfoil(3:4)) / 100;
+    if (t > 0.15)
+        warning('Thin Airfoil Theory may not apply for the chosen airfoil thickness');
+    end
+    
     % Angle of attack
     if (alpha < -10 || alpha > 10)
-        warning('Thin Airfoil Theory may not provide accurate results for the chosen angle of attack');
+        warning('Thin Airfoil Theory may not apply for the chosen angle of attack');
     end
     alpha = deg2rad(alpha);
 
@@ -39,7 +43,7 @@ function [Cl,Cm_LE,Cm_AC] = dvm(airfoil,alpha,M,dist,flap,x_h,eta)
     % Number of data points
     N = M + 1;
 
-    % Geometry discretization distributio
+    % Geometry discretization distribution
     if (dist == 'a')
         x = linspace(0,1,N); % uniform
     elseif (dist == 'b')
@@ -102,50 +106,53 @@ function [Cl,Cm_LE,Cm_AC] = dvm(airfoil,alpha,M,dist,flap,x_h,eta)
         z(:) = 0; % flat plate
     end
     
+    % Flap distribution
+    if (flap)
+        % Using this discretization, the first flap data point might not be aligned with the rest
+        reg_flap = (x >= x_h);
+        z(reg_flap) = z(reg_flap) - tan(eta) * (x(reg_flap) - x_h);
+    end
+    
     % Induced velocity at control point (i) due to vortex (j)
     ij = ndgrid(1:M,1:M); % combvec equivalent
     in = zeros(2,M*M); % i's and j's
     in(1,:) = reshape(ij,[1 M*M]);
     in(2,:) = reshape(ij',[1 M*M]);
     
-    % Assemble system of equations
-    function [v,n,VP] = assemble(x,z)
-        % i and i+1
-        x1 = x(1:M);
-        x2 = x(2:N);
-        z1 = z(1:M);
-        z2 = z(2:N);
+    % i and i+1
+    x1 = x(1:M);
+    x2 = x(2:N);
+    z1 = z(1:M);
+    z2 = z(2:N);
 
-        % Deltas
-        delta_x = x2 - x1;
-        delta_z = z2 - z1;
+    % Deltas
+    delta_x = x2 - x1;
+    delta_z = z2 - z1;
 
-        % Panel chords (length)
-        c = sqrt(delta_x.^2 + delta_z.^2);
+    % Panel chords (length)
+    c = sqrt(delta_x.^2 + delta_z.^2);
 
-        % Normal vectors
-        n = zeros(2,M);
-        n(1,:) = -delta_z ./ c; % x's
-        n(2,:) = delta_x ./ c; % z's
+    % Normal vectors
+    n = zeros(2,M);
+    n(1,:) = -delta_z ./ c; % x's
+    n(2,:) = delta_x ./ c; % z's
 
-        % Vortex points (aerodynamic centers)
-        VP = zeros(2,M);
-        VP(1,:) =  x1 + delta_x * 1/4;
-        VP(2,:) =  z1 + delta_z * 1/4;
+    % Vortex points (aerodynamic centers)
+    VP = zeros(2,M);
+    VP(1,:) =  x1 + delta_x * 1/4;
+    VP(2,:) =  z1 + delta_z * 1/4;
 
-        % Control points
-        CP = zeros(2,M);
-        CP(1,:) =  x1 + delta_x * 3/4;
-        CP(2,:) =  z1 + delta_z * 3/4;
+    % Control points
+    CP = zeros(2,M);
+    CP(1,:) =  x1 + delta_x * 3/4;
+    CP(2,:) =  z1 + delta_z * 3/4;
 
-        % Airfoil with angle of attack
-        r_sq = (CP(1,in(2,:)) - VP(1,in(1,:))).^2 + (CP(2,in(2,:)) - VP(2,in(1,:))).^2;
-        v(1,:) = 1/(2*pi) * (CP(2,in(2,:)) - VP(2,in(1,:))) ./ r_sq;
-        v(2,:) = -1/(2*pi) * (CP(1,in(2,:)) - VP(1,in(1,:))) ./ r_sq;
-    end
+    % Airfoil with angle of attack
+    r_sq = (CP(1,in(2,:)) - VP(1,in(1,:))).^2 + (CP(2,in(2,:)) - VP(2,in(1,:))).^2;
+    v(1,:) = 1/(2*pi) * (CP(2,in(2,:)) - VP(2,in(1,:))) ./ r_sq;
+    v(2,:) = -1/(2*pi) * (CP(1,in(2,:)) - VP(1,in(1,:))) ./ r_sq;
 
     % Matrices
-    [v,n,VP] = assemble(x,z);
     A = reshape(sum(v .* n(:,in(2,:))),[M M])';
     RHS = -[cos(alpha) sin(alpha)] * n;
 
@@ -153,36 +160,21 @@ function [Cl,Cm_LE,Cm_AC] = dvm(airfoil,alpha,M,dist,flap,x_h,eta)
     gamma = linsolve(A,RHS');
 
     % Coefficients
-    Cl = 2 * sum(gamma);
-    Cm_LE = -2 * sum(gamma' .* VP(1,:) * cos(alpha));
-    Cm_AC = -2 * sum(gamma' .* (VP(1,:) - 1/4) * cos(alpha));
-
-    % Flap analysis
-    if (flap)
-        % Instead of using airfoil discretization, we will take two uniform distributions
-        N_flap = floor(x_h / (x_h + (1 - x_h) / cos(eta)) * N); % whole plates %
-        x_flap = union(linspace(0,x_h,N_flap),linspace(x_h,1,N-N_flap+1));
-
-        % Flat plates
-        z_flap = zeros(1,N);
-        reg_flap = (x_flap >= x_h);
-        z_flap(reg_flap) = -tan(eta) * (x_flap(reg_flap) - x_h);
-
-        % Matrices
-        [v_flap,n_flap,VP_flap] = assemble(x_flap,z_flap);
-        A_flap = reshape(sum(v_flap .* n_flap(:,in(2,:))),[M M])';
-        RHS_flap = -n_flap(1,:);
-
-        % Circulation (solve the system of equations)
-        gamma_flap = linsolve(A_flap,RHS_flap');
-
-        % Coefficients by superposition
-        Cl = Cl + 2 * sum(gamma_flap);
-        Cm_LE = Cm_LE - 2 * sum(gamma_flap' .* VP_flap(1,:));
-        Cm_AC = Cm_AC - 2 * sum(gamma_flap' .* (VP_flap(1,:) - 1/4));
-    end
+    Cl = 2 * sum(gamma); % lift coefficient
+    Cm = -2 * sum(gamma' .* VP(1,:) * cos(alpha)); % pitching moment coefficient about the leading edge
 
     % Plots
-    % plot(x, z); % mean camber line discretization
-    % plot(x1,gamma);
+    figure;
+    
+    subplot(2,1,1);
+    plot(x,z);
+    title('Mean camber line discretization');
+    xlabel('$$\frac{x}{c}$$','Interpreter','latex');
+    ylabel('$$z$$','Interpreter','latex');
+    
+    subplot(2,1,2);
+    bar(x1,gamma,'histc');
+    title('Circulation distribution');
+    xlabel('$$\frac{x}{c}$$','Interpreter','latex');
+    ylabel('$$\Gamma$$','Interpreter','latex');
 end
