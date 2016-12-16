@@ -8,7 +8,7 @@ dvm % the script will ask for your input
 
 ## If you are feeling pro, however, or want to iterate over the script
 ```matlab
-[Cl,Cm_LE,Cm_AC] = dvm('4412',5,500,'c','y',8,15) 
+[Cl,Cm] = dvm('4412',5,500,'c','y',8,15) 
 % The arguments are, in order of appearance:
 % - 4-digit NACA (string)
 % - Angle of attack (º)
