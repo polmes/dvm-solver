@@ -4,8 +4,8 @@ function [Cl,Cm] = dvm(airfoil,alpha,M,dist,flap,x_h,eta)
         airfoil = input('4-digit NACA: ','s');
         alpha = input('Angle of attack (º): ');
         M = input('Number of panels: ');
-        dist = input('(a) Uniform\n(b) Full cosine\n(c) Optimal\nDistribution for airfoil geometry discretization (choose from the above a, b, c): ','s');
-        flap = input('Include a flap? [y/n] ','s');
+        dist = input('(a) Uniform\n(b) Full cosine\n(c) Experimental\nDistribution for geometry discretization (choose from the above a, b, c): ','s');
+        flap = input('Include a flap? (y/n) ','s');
     elseif (nargin < 5)
         error('Not enough input arguments');
     elseif (nargin > 7)
