@@ -13,8 +13,8 @@ dvm % the script will ask for your input
 % - 4-digit NACA (string)
 % - Angle of attack (º)
 % - Number of panels (integer)
-% - Type of geometry discretization ('a'. Uniform, 'b'. Full cosine, 'c'. Optimal)
-% - Include a flap? ['y'/'n']
+% - Type of geometry discretization ('a'. Uniform, 'b'. Full cosine, 'c'. Experimental)
+% - Include a flap? ('y'/'n')
 % (-) Flap hinge position (in tenths of chord)
 % (-) Flap deflection angle (º)
 ```
