@@ -113,9 +113,9 @@ function [Cl,Cm] = dvm(airfoil,alpha,M,dist,flap,x_h,eta)
         z(reg_flap) = z(reg_flap) - tan(eta) * (x(reg_flap) - x_h);
     end
     
-    % Induced velocity at control point (i) due to vortex (j)
+    % % i's and j's
     ij = ndgrid(1:M,1:M); % combvec equivalent
-    in = zeros(2,M*M); % i's and j's
+    in = zeros(2,M*M); 
     in(1,:) = reshape(ij,[1 M*M]);
     in(2,:) = reshape(ij',[1 M*M]);
     
@@ -147,7 +147,7 @@ function [Cl,Cm] = dvm(airfoil,alpha,M,dist,flap,x_h,eta)
     CP(1,:) =  x1 + delta_x * 3/4;
     CP(2,:) =  z1 + delta_z * 3/4;
 
-    % Airfoil with angle of attack
+    % Induced velocity at control point (i) due to vortex (j)
     r_sq = (CP(1,in(2,:)) - VP(1,in(1,:))).^2 + (CP(2,in(2,:)) - VP(2,in(1,:))).^2;
     v(1,:) = 1/(2*pi) * (CP(2,in(2,:)) - VP(2,in(1,:))) ./ r_sq;
     v(2,:) = -1/(2*pi) * (CP(1,in(2,:)) - VP(1,in(1,:))) ./ r_sq;
@@ -159,22 +159,32 @@ function [Cl,Cm] = dvm(airfoil,alpha,M,dist,flap,x_h,eta)
     % Circulation (solve the system of equations)
     gamma = linsolve(A,RHS');
 
-    % Coefficients
+    % Results
     Cl = 2 * sum(gamma); % lift coefficient
+    Cp = 2 * gamma' ./ c; % pressure coeficient
     Cm = -2 * sum(gamma' .* VP(1,:) * cos(alpha)); % pitching moment coefficient about the leading edge
 
     % Plots
     figure;
     
-    subplot(2,1,1);
+    subplot(3,1,1);
     plot(x,z);
+    xlim([0 1]);
     title('Mean camber line discretization');
     xlabel('$$\frac{x}{c}$$','Interpreter','latex');
     ylabel('$$z$$','Interpreter','latex');
     
-    subplot(2,1,2);
+    subplot(3,1,2);
     bar(x1,gamma,'histc');
+    xlim([0 1]);
     title('Circulation distribution');
     xlabel('$$\frac{x}{c}$$','Interpreter','latex');
     ylabel('$$\Gamma$$','Interpreter','latex');
+    
+    subplot(3,1,3);
+    plot(x1,Cp);
+    xlim([0 1]);
+    title('Pressure distribution');
+    xlabel('$$\frac{x}{c}$$','Interpreter','latex');
+    ylabel('$$\Delta C_p$$','Interpreter','latex');
 end
