@@ -11,13 +11,13 @@ function [Cl,Cm] = dvm(airfoil,alpha,M,dist,flap,x_h,eta)
     elseif (nargin > 7)
         error('Too many input arguments');
     end
-        
+    
     if (length(airfoil) ~= 4)
         error('Invalid NACA airfoil');
     end
 
     % Airfoil camber
-    f = str2double(airfoil(1)) / 100; % max camber 
+    f = str2double(airfoil(1)) / 100; % max camber
     p = str2double(airfoil(2)) / 10; % max camber position
     
     % Airfoil thickness
@@ -35,7 +35,7 @@ function [Cl,Cm] = dvm(airfoil,alpha,M,dist,flap,x_h,eta)
     % Number of panels
     M = floor(M);
     if (M <= 0)
-        error('Invalid number of panels');    
+        error('Invalid number of panels');
     elseif (M < 10)
         warning('Discrete Vortex Method may not provide accurate results for such a low number of panels');
     end
@@ -115,7 +115,7 @@ function [Cl,Cm] = dvm(airfoil,alpha,M,dist,flap,x_h,eta)
     
     % % i's and j's
     ij = ndgrid(1:M,1:M); % combvec equivalent
-    in = zeros(2,M*M); 
+    in = zeros(2,M*M); % indices
     in(1,:) = reshape(ij,[1 M*M]);
     in(2,:) = reshape(ij',[1 M*M]);
     
